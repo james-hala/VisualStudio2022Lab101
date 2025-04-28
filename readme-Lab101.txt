@@ -1,10 +1,14 @@
 From: 011netservice@gmail.com
-Date: 2025-04-21
-Subject: VS2022Lab101
+Date: 2025-04-26
+Subject: 適合(已能看懂程式語法)的初學者, 學習如何以 C# 開發軟體的 練習題.
+網址: https://svc.011.idv.tw/CodeHelper/cs/vs2022/Lab/VS2022Lab101/
+
+
 
 以下 #### 標記段落, **** 標記常用(流程、設定、備忘)
 
 #### 摘要
+
 - 需下載: 
    Visual Studio 2022, 以英文的環境開發 https://visualstudio.microsoft.com/zh-hant/vs/
    git 工具,  https://git-scm.com/downloads/win, 2.49.0
@@ -49,7 +53,7 @@ Console101-JavaScript-HTML-1.html
 Console101-JavaScript-HTML-2.html
 Console101-JavaScript-HTML-3.html
 
-#### Lab2:
+#### Lab2: WinForms Component
 - 主題
   1. 以 WinForms program 接收 Input 處理後產生 Output.
   2. 請學員在自己的開發環境上展現上次練習題的成果.
@@ -223,4 +227,99 @@ WinForm 基本物件.
 	- 各國文字均有不同的字碼規範與歷史版本. 
 	例如台灣舊版的字碼是 Big-5 碼, 中國的字碼為 GB2312, GBK...等不同版本.
 
+#### Lab3: Database
+- 課程大綱
+>	新的 WinForms 元件及操作
+	快速展示一下 Lab3 程式的執行效果. 
 
+>	Multi-Form.
+>	ToolStripMenuItem
+	快速鍵
+
+>	StatusStrip
+	左右對齊的 Label
+
+>	AboutBox.cs
+	1. 自動產生的 Template 程式.
+		Template: 開發人員應收集一些常用的樣板程式, 以樣板為基礎添加新功能比較快, 而不是每次都從零開始寫起. 
+
+	2. 示範重複啟動 AboutBox
+
+	Value Type vs Reference Type
+	數值型別變數 Value Type: 有效範圍結束自動回收.
+	參考型別變數 Reference Type: 
+		1. 參考型別建立的物件叫做 Instance. Instance 均由 new 關鍵字建立.
+		   數值型別的變數不會有 Instance.
+		   參考型別的變數代表一個數值參考到一個系統中的 Instance: 參考型別的變數在有效範圍結束時, 變數的數值會自動回收, 但是變數參考到的 Instance 仍存在!
+		2. 參考型別的變數必須自行回收, 或由 garbage collector 回收.
+				自行回收的方法是呼叫本身的標準介面 Dispose(), 或是使用 using 關鍵字在範圍內會自動呼叫標準介面 Dispose().
+		3. 系統會依據系統資源狀況, 不定時啟動 garbage collector 進行回收作業. 
+		   程式結束的時候, garbage collector 會針對程式範圍進行一次回收作業.
+		4. garbage collector 只能回收那些(沒有被任何變數參考到的 Instance).
+		   若還有變數參考到的 Instance, 則會殘留無法回收.
+				例外: 若一個參考型別變數中, 僅有數值型別的成員時, 則在有效範圍外, 也會被 garbage collector 回收. 
+					例如: FormEntry.BtnDelete_Click() 中的 CRecord Record1 = new();
+		
+    靜態變數
+    1. 整個程式只有一份 Instance, 生命週期是整個程式執行期間, 直到程式結束.
+    2. 就算是宣告在函數範圍內, 也不會在函數結束時釋放.
+       例如: 在函數中宣告 static int i = 0; // i 會在整個程式執行期間都存在.
+
+    參考型別靜態變數
+    1. 整個程式只有一份 Instance, 生命週期是整個程式執行期間, 直到程式結束.
+    2. 啟動點是靜態建構子, 會在第一次使用這個類別的時候, 自動執行.
+       由於這樣的啟動點不好預期, 甚至有些情況會造成錯誤.
+       所以建議在靜態建構子中, 增加一個函數, 在可預期的地方執行, 啟動靜態變數建構子.
+       例如: CProject.Run().
+    3. 結束點是程式結束, 會自動釋放靜態變數.
+    練習: 測試靜態變數 CProject 的啟動點. 
+
+	Assemply
+		編譯以後的可執行檔, 不一定是 .exe, 可能是其他副檔名, 例如 .dll
+		內含一些屬性可取得, 例如: AssemblyTitle, AssemblyProduct, AssemblyVersion, AssemblyCopyright, AssemblyCompany, AssemblyDescription.
+
+	程式設計師要確保程式結束的時候, 所有用到的變數都被回收, 不可以殘留!
+		若仍有殘留變數未回收的程式, 則系統會認定為(仍在執行中的程式)
+		練習: 檢查執行中的程式清單.
+
+>	複製 Form
+	複製 Form 的時候必須把 (Form.cs, Form.Designer.cs, Form1.resx...等檔案)同時複製才能成功.
+	以下步驟可確保複製成功, 以 Form1 複製為 FormQuery 為例:
+	1. 以檔案總管將 (Form1.cs, Form1.resx, Form1.Designer.cs) 複製到不同的資料夾(非 Visual Studio 專案範圍, 例如: C:\temp).
+	2. 在 Visual Studio Solution Explorer 將 Form1 改名為 FormQuery. 
+		a. Visual Studio 會提示: 相關檔案都會一起變更為新檔案名稱.
+		b. 改名後最好 F6 重新編譯一次, 確定改名成功. 
+	3. 以檔案總管將 C:\temp\(Form1.cs, Form1.resx, Form1.Designer.cs) 複製回專案的資料夾中.
+		a. Visual Studio 2022 會自動將 Form1 重新加入專案中.
+			舊版的 Visual Studio 不會自動將 Form1 重新加入專案中, 必須在專案中自行加回 Form1.
+	4. F6 重新編譯一次, 確定包含 Form1 和 FormQuery 可編譯成功.
+
+>	資料庫: MySql.Data
+	NuGet 可下載第三方元件. 例如: MySql.Data
+	專案已安裝的元件在專案 \Dependencies\Packages\ 中.
+	
+>	Table
+	1. database 內碼應選用 UTF8.
+	2. PRIMARY KEY, UNIQUE KEY.
+	3. NOT NULL vs DEFAULT NULL.
+	3. varchar vs nvarchar.
+	4. 自動寫入新增 record 時間: `fcreate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP.
+	5. 自動寫入修改 record 時間: `fupdate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+	參考: Lab3-Database\Dump_lab101_20250427.sql 如下:
+CREATE TABLE `tlab3` (
+  `fpk1` int NOT NULL,
+  `fsku` varchar(16) NOT NULL,
+  `fname` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+  `fprice` decimal(13,2) NOT NULL,
+  `fqty` int NOT NULL,
+  `famount` decimal(13,2) NOT NULL,
+  `fcreate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fupdate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`fpk1`),
+  UNIQUE KEY `fpk1_UNIQUE` (`fpk1`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+	練習: Dump database.
+
+>	講解程式
+		依照資料流順序說明程式
