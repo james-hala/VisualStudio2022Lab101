@@ -261,13 +261,13 @@ WinForm 基本物件.
 					例如: FormEntry.BtnDelete_Click() 中的 CRecord Record1 = new();
 		
     靜態變數
-    1. 整個程式只有一份 Instance, 生命週期是整個程式執行期間, 直到程式結束.
+    1. 整個程式只有一份, 生命週期是整個程式執行期間, 直到程式結束.
     2. 就算是宣告在函數範圍內, 也不會在函數結束時釋放.
        例如: 在函數中宣告 static int i = 0; // i 會在整個程式執行期間都存在.
 
     參考型別靜態變數
     1. 整個程式只有一份 Instance, 生命週期是整個程式執行期間, 直到程式結束.
-    2. 啟動點是靜態建構子, 會在第一次使用這個類別的時候, 自動執行.
+    2. 啟動點是靜態建構子, 會在第一次使用這個類別成員(屬性或方法)時候, 自動執行.
        由於這樣的啟動點不好預期, 甚至有些情況會造成錯誤.
        所以建議在靜態建構子中, 增加一個函數, 在可預期的地方執行, 啟動靜態變數建構子.
        例如: CProject.Run().
@@ -283,7 +283,7 @@ WinForm 基本物件.
 		練習: 檢查執行中的程式清單.
 
 >	複製 Form
-	複製 Form 的時候必須把 (Form.cs, Form.Designer.cs, Form1.resx...等檔案)同時複製才能成功.
+	複製 Form 的時候必須把 (Form.cs, Form.Designer.cs, Form.resx...等檔案)同時複製才能成功.
 	以下步驟可確保複製成功, 以 Form1 複製為 FormQuery 為例:
 	1. 以檔案總管將 (Form1.cs, Form1.resx, Form1.Designer.cs) 複製到不同的資料夾(非 Visual Studio 專案範圍, 例如: C:\temp).
 	2. 在 Visual Studio Solution Explorer 將 Form1 改名為 FormQuery. 
@@ -305,6 +305,8 @@ WinForm 基本物件.
 	3. varchar vs nvarchar.
 	4. 自動寫入新增 record 時間: `fcreate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP.
 	5. 自動寫入修改 record 時間: `fupdate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+	6. 自動編號: 例如從 1000 開編號, 第一個號碼 1000, 依序編號. 
+
 
 	參考: Lab3-Database\Dump_lab101_20250427.sql 如下:
 CREATE TABLE `tlab3` (
@@ -316,10 +318,27 @@ CREATE TABLE `tlab3` (
   `famount` decimal(13,2) NOT NULL,
   `fcreate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `fupdate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`fpk1`),
+  PRIMARY KEY (`fpk1`)
   UNIQUE KEY `fpk1_UNIQUE` (`fpk1`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 	練習: Dump database.
 
 >	講解程式
 		依照資料流順序說明程式
+		
+#### Lab4: File
+- 課程大綱
+>	以 AI 上課
+	1. AI-1.txt: 閱讀後可了解一般跟 AI 互動的模式, 該怎樣提問 AI 取得我們所需要的答案. 
+	2. AI-2.txt: 
+		a. 展示如何提問 Lab3 曾經撰寫過撰寫的程式.
+		b. 比對一下跟 Lab3 既有的程式有什麼不同 ?
+		c. 思考一下若要將 AI 的答案, 寫入 Lab3 程式的過程, 應如何進行.
+		
+	3. File IO 實作. 
+		a. AI-3.txt: 是 AI 以 CSV    格式提供的匯入匯出的函數.
+		b. AI-4.txt: 是 AI 以 Json   格式提供的匯入匯出的函數.
+		c. AI-5.txt: 是 AI 以 Binary 格式提供的匯入匯出的函數.
+		請增加 Lab4 專案, 以 Lab3 為基礎, 增加可將資料庫資料, 匯入匯出3種格式(CSV, Json, Binary)檔案的功能.
+		練習過程優先嘗試問 AI 後, 再問我.
+

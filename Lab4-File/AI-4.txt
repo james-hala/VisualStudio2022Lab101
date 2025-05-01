@@ -1,0 +1,179 @@
+AI 提問 例4, Copilot:
+給我 C# .Net 8.0 的程式, 包含ImportJson(), ExportJson()函數, 經由以下 class CRecord, MySql 的 table tlab3, 以 Json 的格式, 匯入或匯出 MySql 的 table tlab3 的資料, 為 UTF8 文字檔案.  
+
+CREATE TABLE `tlab3` (
+  `fpk1` int NOT NULL,
+  `fsku` varchar(16) NOT NULL,
+  `fname` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+  `fprice` decimal(13,2) NOT NULL,
+  `fqty` int NOT NULL,
+  `famount` decimal(13,2) NOT NULL,
+  `fcreate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fupdate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`fpk1`)
+  UNIQUE KEY `fpk1_UNIQUE` (`fpk1`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+public class CRecord
+{
+	public int PK1  = 0;
+	public string SKU = string.Empty;
+	public string? Name = null;
+	public decimal Price = 0;
+	public int Qty = 0;
+	public decimal Amount = 0;
+	public DateTime CreateTime = DateTime.MinValue;
+	public DateTime LastUpdateTime = DateTime.MinValue;
+}
+
+以下是 C# .NET 8.0 的程式碼，包含 `ImportJson()` 和 `ExportJson()` 函數，以 JSON 格式匯入和匯出 MySQL 的 `tlab3` 資料，並使用 UTF-8 文字檔案：
+
+### **完整程式碼**
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
+using MySql.Data.MySqlClient;
+
+public class DatabaseHandler
+{
+    private string connectionString = "Server=localhost;Database=your_database;User ID=your_user;Password=your_password;";
+
+    // 匯出 JSON
+    public void ExportJson(string filePath)
+    {
+        string query = "SELECT * FROM tlab3";
+        using var connection = new MySqlConnection(connectionString);
+        using var command = new MySqlCommand(query, connection);
+        connection.Open();
+        using var reader = command.ExecuteReader();
+        var records = new List<CRecord>();
+
+        while (reader.Read())
+        {
+            records.Add(new CRecord
+            {
+                PK1 = reader.GetInt32("fpk1"),
+                SKU = reader.GetString("fsku"),
+                Name = reader.IsDBNull("fname") ? null : reader.GetString("fname"),
+                Price = reader.GetDecimal("fprice"),
+                Qty = reader.GetInt32("fqty"),
+                Amount = reader.GetDecimal("famount"),
+                CreateTime = reader.GetDateTime("fcreate_time"),
+                LastUpdateTime = reader.GetDateTime("fupdate_time")
+            });
+        }
+
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        string json = JsonSerializer.Serialize(records, options);
+
+        File.WriteAllText(filePath, json, System.Text.Encoding.UTF8);
+        Console.WriteLine("資料已匯出至 JSON 檔案");
+    }
+
+    // 匯入 JSON
+    public void ImportJson(string filePath)
+    {
+        string json = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
+        var records = JsonSerializer.Deserialize<List<CRecord>>(json);
+
+        using var connection = new MySqlConnection(connectionString);
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            foreach (var record in records)
+            {
+                string query = @"INSERT INTO tlab3 (fpk1, fsku, fname, fprice, fqty, famount, fcreate_time, fupdate_time) 
+                                VALUES (@PK1, @SKU, @Name, @Price, @Qty, @Amount, @CreateTime, @LastUpdateTime) 
+                                ON DUPLICATE KEY UPDATE 
+                                fsku = @SKU, fname = @Name, fprice = @Price, fqty = @Qty, famount = @Amount, 
+                                fcreate_time = @CreateTime, fupdate_time = @LastUpdateTime";
+                using var command = new MySqlCommand(query, connection, transaction);
+                command.Parameters.AddWithValue("@PK1", record.PK1);
+                command.Parameters.AddWithValue("@SKU", record.SKU);
+                command.Parameters.AddWithValue("@Name", record.Name ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@Price", record.Price);
+                command.Parameters.AddWithValue("@Qty", record.Qty);
+                command.Parameters.AddWithValue("@Amount", record.Amount);
+                command.Parameters.AddWithValue("@CreateTime", record.CreateTime);
+                command.Parameters.AddWithValue("@LastUpdateTime", record.LastUpdateTime);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+            Console.WriteLine("JSON 資料已成功匯入");
+        }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            Console.WriteLine($"匯入失敗: {ex.Message}");
+            throw;
+        }
+    }
+}
+
+public class CRecord
+{
+    public int PK1 { get; set; }
+    public string SKU { get; set; } = string.Empty;
+    public string? Name { get; set; } = null;
+    public decimal Price { get; set; }
+    public int Qty { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime CreateTime { get; set; } = DateTime.MinValue;
+    public DateTime LastUpdateTime { get; set; } = DateTime.MinValue;
+}
+
+public class Program
+{
+    public static void Main()
+    {
+        var dbHandler = new DatabaseHandler();
+
+        // 匯出 JSON
+        dbHandler.ExportJson("tlab3_export.json");
+
+        // 匯入 JSON
+        dbHandler.ImportJson("tlab3_import.json");
+    }
+}
+```
+
+### **程式說明**
+1. **`ExportJson()` 函數**：
+   - 從 `tlab3` 表格讀取資料，將其轉換為 `CRecord` 的集合，並序列化為 JSON 格式。
+   - 使用 `JsonSerializer` 寫入 UTF-8 的 JSON 檔案。
+
+2. **`ImportJson()` 函數**：
+   - 讀取 JSON 檔案並將其反序列化為 `CRecord` 集合。
+   - 使用 `ON DUPLICATE KEY UPDATE` 確保匯入時，若主鍵重複則更新資料。
+
+3. **JSON 文件格式**：
+   - JSON 文件包含每一筆紀錄的屬性，例如：
+     ```json
+     [
+         {
+             "PK1": 1,
+             "SKU": "SKU001",
+             "Name": "Item 1",
+             "Price": 100.0,
+             "Qty": 2,
+             "Amount": 200.0,
+             "CreateTime": "2025-04-29T11:33:00",
+             "LastUpdateTime": "2025-04-29T11:33:00"
+         }
+     ]
+     ```
+
+4. **異常處理**：
+   - 匯入過程中使用交易 (`Transaction`) 確保資料完整性，若遇到錯誤則回滾。
+
+### **使用建議**
+- 確保 `connectionString` 是正確的，並具有訪問資料庫的權限。
+- 匯入 JSON 時，確保文件內容的結構與 `CRecord` 類別一致。
+
+如果需要更進一步的功能或擴充，隨時告訴我！ 😊

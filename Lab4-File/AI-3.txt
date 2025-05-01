@@ -1,0 +1,137 @@
+AI 提問 例3, Copilot:
+給我 C# .Net 8.0 的程式, 包含ImportCSV(), ExportCSV()函數, 經由以下 class CRecord, MySql 的 table tlab3, 以 CSV 的格式, 逗號分隔欄位, 匯入或匯出 MySql 的 table tlab3 的資料, 為 UTF8 文字檔案.  
+
+CREATE TABLE `tlab3` (
+  `fpk1` int NOT NULL,
+  `fsku` varchar(16) NOT NULL,
+  `fname` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+  `fprice` decimal(13,2) NOT NULL,
+  `fqty` int NOT NULL,
+  `famount` decimal(13,2) NOT NULL,
+  `fcreate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fupdate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`fpk1`)
+  UNIQUE KEY `fpk1_UNIQUE` (`fpk1`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+public class CRecord
+{
+	public int PK1  = 0;
+	public string SKU = string.Empty;
+	public string? Name = null;
+	public decimal Price = 0;
+	public int Qty = 0;
+	public decimal Amount = 0;
+	public DateTime CreateTime = DateTime.MinValue;
+	public DateTime LastUpdateTime = DateTime.MinValue;
+}
+
+以下是 C# .NET 8.0 的程式碼，包含匯入 (`ImportCSV`) 和匯出 (`ExportCSV`) CSV 的函數，使用 `CRecord` 存取 MySQL 的 `tlab3` 表格：
+
+### **程式碼**
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.IO;
+using MySql.Data.MySqlClient;
+
+public class DatabaseHandler
+{
+    private string connectionString = "Server=localhost;Database=your_database;User ID=your_user;Password=your_password;";
+
+    // 匯出 CSV
+    public void ExportCSV(string filePath)
+    {
+        string query = "SELECT * FROM tlab3";
+        using var connection = new MySqlConnection(connectionString);
+        using var command = new MySqlCommand(query, connection);
+        connection.Open();
+        using var reader = command.ExecuteReader();
+        using var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8);
+        writer.WriteLine("PK1,SKU,Name,Price,Qty,Amount,CreateTime,LastUpdateTime"); // CSV 標頭
+        while (reader.Read())
+        {
+            writer.WriteLine($"{reader["fpk1"]},{reader["fsku"]},{reader["fname"]},{reader["fprice"]},{reader["fqty"]},{reader["famount"]},{reader["fcreate_time"]},{reader["fupdate_time"]}");
+        }
+    }
+
+    // 匯入 CSV
+    public void ImportCSV(string filePath)
+    {
+        using var connection = new MySqlConnection(connectionString);
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            using var reader = new StreamReader(filePath, System.Text.Encoding.UTF8);
+            string line;
+            reader.ReadLine(); // 略過標頭
+            while ((line = reader.ReadLine()) != null)
+            {
+                var values = line.Split(',');
+                string query = @"INSERT INTO tlab3 (fpk1, fsku, fname, fprice, fqty, famount, fcreate_time, fupdate_time) 
+                                VALUES (@PK1, @SKU, @Name, @Price, @Qty, @Amount, @CreateTime, @LastUpdateTime) 
+                                ON DUPLICATE KEY UPDATE 
+                                fsku = @SKU, fname = @Name, fprice = @Price, fqty = @Qty, famount = @Amount, 
+                                fcreate_time = @CreateTime, fupdate_time = @LastUpdateTime";
+                using var command = new MySqlCommand(query, connection, transaction);
+                command.Parameters.AddWithValue("@PK1", int.Parse(values[0]));
+                command.Parameters.AddWithValue("@SKU", values[1]);
+                command.Parameters.AddWithValue("@Name", string.IsNullOrEmpty(values[2]) ? (object)DBNull.Value : values[2]);
+                command.Parameters.AddWithValue("@Price", decimal.Parse(values[3]));
+                command.Parameters.AddWithValue("@Qty", int.Parse(values[4]));
+                command.Parameters.AddWithValue("@Amount", decimal.Parse(values[5]));
+                command.Parameters.AddWithValue("@CreateTime", DateTime.Parse(values[6]));
+                command.Parameters.AddWithValue("@LastUpdateTime", DateTime.Parse(values[7]));
+                command.ExecuteNonQuery();
+            }
+            transaction.Commit();
+        }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            throw new Exception("匯入失敗: " + ex.Message);
+        }
+    }
+}
+
+public class Program
+{
+    public static void Main()
+    {
+        var dbHandler = new DatabaseHandler();
+
+        // 匯出 CSV
+        dbHandler.ExportCSV("tlab3_export.csv");
+        Console.WriteLine("資料已匯出至 tlab3_export.csv");
+
+        // 匯入 CSV
+        dbHandler.ImportCSV("tlab3_import.csv");
+        Console.WriteLine("資料已成功匯入");
+    }
+}
+```
+
+### **程式說明**
+1. **`ExportCSV` 函數**：
+   - 從 `tlab3` 表格讀取資料，並將其匯出到指定的 CSV 檔案。
+   - 使用 `StreamWriter` 寫入 UTF-8 格式。
+
+2. **`ImportCSV` 函數**：
+   - 從 CSV 檔案讀取資料，並插入或更新到 `tlab3` 表格。
+   - 使用 `ON DUPLICATE KEY UPDATE` 確保主鍵重複時進行更新。
+
+3. **例外處理**：
+   - 匯入過程中使用交易 (`Transaction`) 以確保操作的完整性，若發生錯誤則回滾。
+
+4. **CSV 格式**：
+   - 第一行為欄位標頭：`PK1,SKU,Name,Price,Qty,Amount,CreateTime,LastUpdateTime`。
+   - 後續每行為表格中的一筆資料。
+
+### **使用建議**
+- 在 `connectionString` 中填入正確的資料庫連線資訊。
+- 確保 CSV 文件的格式和內容與 `tlab3` 表格結構匹配。
+
+如果有進一步的需求或需要其他功能擴充，隨時告訴我！ 😊

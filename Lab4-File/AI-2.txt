@@ -1,0 +1,169 @@
+AI 提問 例2, Copilot:
+給我 C# .Net 8.0 的程式, 包含新增、修改、刪除、以及查詢單筆, 查詢多筆的函數, 經由以下 class CRecord, 存取 MySql 的 table tlab3.  
+
+CREATE TABLE `tlab3` (
+  `fpk1` int NOT NULL,
+  `fsku` varchar(16) NOT NULL,
+  `fname` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+  `fprice` decimal(13,2) NOT NULL,
+  `fqty` int NOT NULL,
+  `famount` decimal(13,2) NOT NULL,
+  `fcreate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fupdate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`fpk1`)
+  UNIQUE KEY `fpk1_UNIQUE` (`fpk1`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+public class CRecord
+{
+	public int PK1  = 0;
+	public string SKU = string.Empty;
+	public string? Name = null;
+	public decimal Price = 0;
+	public int Qty = 0;
+	public decimal Amount = 0;
+	public DateTime CreateTime = DateTime.MinValue;
+	public DateTime LastUpdateTime = DateTime.MinValue;
+}
+
+以下是 C# .NET 8.0 使用 MySql.Data 套件操作 MySQL 資料庫 `tlab3` 的程式碼，包含新增、修改、刪除、查詢單筆與查詢多筆的函數實作：
+
+### **範例程式碼**
+```csharp
+using System;
+using System.Collections.Generic;
+using MySql.Data.MySqlClient;
+
+public class DatabaseHandler
+{
+    private string connectionString = "Server=localhost;Database=your_database;User ID=your_user;Password=your_password;";
+
+    // 新增
+    public void AddRecord(CRecord record)
+    {
+        string query = "INSERT INTO tlab3 (fpk1, fsku, fname, fprice, fqty, famount) VALUES (@PK1, @SKU, @Name, @Price, @Qty, @Amount)";
+        using var connection = new MySqlConnection(connectionString);
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@PK1", record.PK1);
+        command.Parameters.AddWithValue("@SKU", record.SKU);
+        command.Parameters.AddWithValue("@Name", record.Name);
+        command.Parameters.AddWithValue("@Price", record.Price);
+        command.Parameters.AddWithValue("@Qty", record.Qty);
+        command.Parameters.AddWithValue("@Amount", record.Amount);
+        connection.Open();
+        command.ExecuteNonQuery();
+    }
+
+    // 修改
+    public void UpdateRecord(CRecord record)
+    {
+        string query = "UPDATE tlab3 SET fsku = @SKU, fname = @Name, fprice = @Price, fqty = @Qty, famount = @Amount WHERE fpk1 = @PK1";
+        using var connection = new MySqlConnection(connectionString);
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@PK1", record.PK1);
+        command.Parameters.AddWithValue("@SKU", record.SKU);
+        command.Parameters.AddWithValue("@Name", record.Name);
+        command.Parameters.AddWithValue("@Price", record.Price);
+        command.Parameters.AddWithValue("@Qty", record.Qty);
+        command.Parameters.AddWithValue("@Amount", record.Amount);
+        connection.Open();
+        command.ExecuteNonQuery();
+    }
+
+    // 刪除
+    public void DeleteRecord(int pk1)
+    {
+        string query = "DELETE FROM tlab3 WHERE fpk1 = @PK1";
+        using var connection = new MySqlConnection(connectionString);
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@PK1", pk1);
+        connection.Open();
+        command.ExecuteNonQuery();
+    }
+
+    // 查詢單筆
+    public CRecord? GetRecord(int pk1)
+    {
+        string query = "SELECT * FROM tlab3 WHERE fpk1 = @PK1";
+        using var connection = new MySqlConnection(connectionString);
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@PK1", pk1);
+        connection.Open();
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new CRecord
+            {
+                PK1 = reader.GetInt32("fpk1"),
+                SKU = reader.GetString("fsku"),
+                Name = reader.IsDBNull("fname") ? null : reader.GetString("fname"),
+                Price = reader.GetDecimal("fprice"),
+                Qty = reader.GetInt32("fqty"),
+                Amount = reader.GetDecimal("famount"),
+                CreateTime = reader.GetDateTime("fcreate_time"),
+                LastUpdateTime = reader.GetDateTime("fupdate_time")
+            };
+        }
+        return null;
+    }
+
+    // 查詢多筆
+    public List<CRecord> GetAllRecords()
+    {
+        string query = "SELECT * FROM tlab3";
+        var records = new List<CRecord>();
+        using var connection = new MySqlConnection(connectionString);
+        using var command = new MySqlCommand(query, connection);
+        connection.Open();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            records.Add(new CRecord
+            {
+                PK1 = reader.GetInt32("fpk1"),
+                SKU = reader.GetString("fsku"),
+                Name = reader.IsDBNull("fname") ? null : reader.GetString("fname"),
+                Price = reader.GetDecimal("fprice"),
+                Qty = reader.GetInt32("fqty"),
+                Amount = reader.GetDecimal("famount"),
+                CreateTime = reader.GetDateTime("fcreate_time"),
+                LastUpdateTime = reader.GetDateTime("fupdate_time")
+            });
+        }
+        return records;
+    }
+}
+
+public class Program
+{
+    public static void Main()
+    {
+        var dbHandler = new DatabaseHandler();
+
+        // 新增資料
+        dbHandler.AddRecord(new CRecord { PK1 = 1, SKU = "SKU001", Name = "Item 1", Price = 100, Qty = 2, Amount = 200 });
+
+        // 修改資料
+        dbHandler.UpdateRecord(new CRecord { PK1 = 1, SKU = "SKU002", Name = "Updated Item", Price = 150, Qty = 3, Amount = 450 });
+
+        // 查詢單筆
+        var record = dbHandler.GetRecord(1);
+        Console.WriteLine(record != null ? $"查詢結果: {record.Name}" : "無此紀錄");
+
+        // 查詢多筆
+        var allRecords = dbHandler.GetAllRecords();
+        Console.WriteLine($"共有 {allRecords.Count} 筆紀錄");
+
+        // 刪除資料
+        dbHandler.DeleteRecord(1);
+    }
+}
+```
+
+### **程式說明**
+1. **連線字串**：更新 `connectionString` 為你的 MySQL 資料庫設定。
+2. **參數化查詢**：確保使用參數化查詢以防範 SQL Injection 攻擊。
+3. **異常處理**：在實務中，建議加入 `try-catch` 區塊以處理可能的例外情況。
+
+如果你需要調整邏輯或針對特定情境進行優化，請告訴我，我可以進一步提供建議！ 😊
+

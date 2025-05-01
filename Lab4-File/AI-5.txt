@@ -1,0 +1,213 @@
+AI 提問 例5, Copilot:
+給我 C# .Net 8.0 的程式, 包含ImportBinary(), ExportBinary()函數, 經由以下 class CRecord, MySql 的 table tlab3, 以 Binary 的格式, 若碰到 varchar 格式的欄位, 以最大 255 bytes 存放, 第1個byte 存放實際欄位資料的 bytes 個數,  匯入或匯出 MySql 的 table tlab3 的資料, 為 Binary 檔案. 
+
+CREATE TABLE `tlab3` (
+  `fpk1` int NOT NULL,
+  `fsku` varchar(16) NOT NULL,
+  `fname` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+  `fprice` decimal(13,2) NOT NULL,
+  `fqty` int NOT NULL,
+  `famount` decimal(13,2) NOT NULL,
+  `fcreate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fupdate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`fpk1`)
+  UNIQUE KEY `fpk1_UNIQUE` (`fpk1`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+public class CRecord
+{
+	public int PK1  = 0;
+	public string SKU = string.Empty;
+	public string? Name = null;
+	public decimal Price = 0;
+	public int Qty = 0;
+	public decimal Amount = 0;
+	public DateTime CreateTime = DateTime.MinValue;
+	public DateTime LastUpdateTime = DateTime.MinValue;
+}
+
+以下是 C# .NET 8.0 的程式碼，包含 `ImportBinary()` 和 `ExportBinary()` 函數，能以 Binary 格式匯入和匯出 `tlab3` 表格資料，並根據你的需求處理 `varchar` 欄位的格式（最多 255 bytes，且第 1 個 byte 存放資料的實際大小）：
+
+### **程式碼**
+```csharp
+using System;
+using System.Collections.Generic;
+using System.IO;
+using MySql.Data.MySqlClient;
+
+public class DatabaseHandler
+{
+    private string connectionString = "Server=localhost;Database=your_database;User ID=your_user;Password=your_password;";
+
+    // 匯出 Binary
+    public void ExportBinary(string filePath)
+    {
+        string query = "SELECT * FROM tlab3";
+        using var connection = new MySqlConnection(connectionString);
+        using var command = new MySqlCommand(query, connection);
+        connection.Open();
+        using var reader = command.ExecuteReader();
+        using var writer = new BinaryWriter(File.Open(filePath, FileMode.Create));
+
+        while (reader.Read())
+        {
+            // PK1
+            writer.Write(reader.GetInt32("fpk1"));
+
+            // SKU (varchar)
+            WriteVarchar(writer, reader.GetString("fsku"), 16);
+
+            // Name (nullable varchar)
+            string? name = reader.IsDBNull("fname") ? null : reader.GetString("fname");
+            WriteVarchar(writer, name, 64);
+
+            // Price
+            writer.Write(reader.GetDecimal("fprice"));
+
+            // Qty
+            writer.Write(reader.GetInt32("fqty"));
+
+            // Amount
+            writer.Write(reader.GetDecimal("famount"));
+
+            // CreateTime
+            writer.Write(reader.GetDateTime("fcreate_time").ToBinary());
+
+            // LastUpdateTime
+            writer.Write(reader.GetDateTime("fupdate_time").ToBinary());
+        }
+    }
+
+    private void WriteVarchar(BinaryWriter writer, string? value, int maxBytes)
+    {
+        byte[] data = value == null ? Array.Empty<byte>() : System.Text.Encoding.UTF8.GetBytes(value);
+        byte size = (byte)Math.Min(data.Length, maxBytes);
+        writer.Write(size);
+        writer.Write(data, 0, size);
+
+        // Fill remaining bytes with padding if necessary
+        for (int i = size; i < maxBytes; i++)
+        {
+            writer.Write((byte)0);
+        }
+    }
+
+    // 匯入 Binary
+    public void ImportBinary(string filePath)
+    {
+        using var connection = new MySqlConnection(connectionString);
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            using var reader = new BinaryReader(File.Open(filePath, FileMode.Open));
+
+            while (reader.BaseStream.Position < reader.BaseStream.Length)
+            {
+                // PK1
+                int pk1 = reader.ReadInt32();
+
+                // SKU (varchar)
+                string sku = ReadVarchar(reader, 16);
+
+                // Name (nullable varchar)
+                string? name = ReadVarchar(reader, 64);
+
+                // Price
+                decimal price = reader.ReadDecimal();
+
+                // Qty
+                int qty = reader.ReadInt32();
+
+                // Amount
+                decimal amount = reader.ReadDecimal();
+
+                // CreateTime
+                DateTime createTime = DateTime.FromBinary(reader.ReadInt64());
+
+                // LastUpdateTime
+                DateTime lastUpdateTime = DateTime.FromBinary(reader.ReadInt64());
+
+                string query = @"INSERT INTO tlab3 (fpk1, fsku, fname, fprice, fqty, famount, fcreate_time, fupdate_time) 
+                                VALUES (@PK1, @SKU, @Name, @Price, @Qty, @Amount, @CreateTime, @LastUpdateTime) 
+                                ON DUPLICATE KEY UPDATE 
+                                fsku = @SKU, fname = @Name, fprice = @Price, fqty = @Qty, famount = @Amount, 
+                                fcreate_time = @CreateTime, fupdate_time = @LastUpdateTime";
+                using var command = new MySqlCommand(query, connection, transaction);
+                command.Parameters.AddWithValue("@PK1", pk1);
+                command.Parameters.AddWithValue("@SKU", sku);
+                command.Parameters.AddWithValue("@Name", name ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@Price", price);
+                command.Parameters.AddWithValue("@Qty", qty);
+                command.Parameters.AddWithValue("@Amount", amount);
+                command.Parameters.AddWithValue("@CreateTime", createTime);
+                command.Parameters.AddWithValue("@LastUpdateTime", lastUpdateTime);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            Console.WriteLine($"匯入失敗: {ex.Message}");
+            throw;
+        }
+    }
+
+    private string ReadVarchar(BinaryReader reader, int maxBytes)
+    {
+        byte size = reader.ReadByte();
+        byte[] data = reader.ReadBytes(size);
+        reader.BaseStream.Seek(maxBytes - size, SeekOrigin.Current); // 跳過填充位元
+        return System.Text.Encoding.UTF8.GetString(data);
+    }
+}
+
+public class CRecord
+{
+    public int PK1 { get; set; }
+    public string SKU { get; set; } = string.Empty;
+    public string? Name { get; set; } = null;
+    public decimal Price { get; set; }
+    public int Qty { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime CreateTime { get; set; } = DateTime.MinValue;
+    public DateTime LastUpdateTime { get; set; } = DateTime.MinValue;
+}
+
+public class Program
+{
+    public static void Main()
+    {
+        var dbHandler = new DatabaseHandler();
+
+        // 匯出 Binary
+        dbHandler.ExportBinary("tlab3_export.bin");
+        Console.WriteLine("資料已匯出至 Binary 檔案");
+
+        // 匯入 Binary
+        dbHandler.ImportBinary("tlab3_import.bin");
+        Console.WriteLine("資料已成功匯入");
+    }
+}
+```
+
+### **程式說明**
+1. **`ExportBinary()` 函數**：
+   - 將表格中的資料轉換成 Binary 格式，使用 `BinaryWriter` 寫入。
+   - 對 `varchar` 欄位，將資料長度放入第 1 個 byte，最多存 255 bytes，並填充不足的空間。
+
+2. **`ImportBinary()` 函數**：
+   - 讀取 Binary 資料檔案並插入或更新到 `tlab3` 表格。
+   - 使用 `BinaryReader` 並根據 `varchar` 的存放邏輯解碼。
+
+3. **例外處理**：
+   - 匯入過程中使用交易 (`Transaction`) 確保資料完整性。
+
+4. **使用注意**：
+   - 確保 Binary 檔案格式和表格結構保持一致。
+   - 調整 `connectionString` 為你的資料庫設定。
+
+如果還有其他需求或需要優化此邏輯，隨時告訴我！ 😊
